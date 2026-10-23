@@ -259,7 +259,7 @@ fn impl_write_fields(
     });
 
     let extract_fields = match fields {
-        syn::Fields::Named(_) => quote::quote!(#name { #(#field_names),* }),
+        syn::Fields::Named(_) => named_fields_pattern(&name, fields),
         syn::Fields::Unnamed(_) => quote::quote!(#name ( #(#field_names),* )),
         syn::Fields::Unit => quote::quote!(#name),
     };
@@ -380,7 +380,7 @@ fn impl_measure_fields(
     });
 
     let extract_fields = match fields {
-        syn::Fields::Named(_) => quote::quote!(#name { #(#field_names),* }),
+        syn::Fields::Named(_) => named_fields_pattern(&name, fields),
         syn::Fields::Unnamed(_) => quote::quote!(#name ( #(#field_names),* )),
         syn::Fields::Unit => quote::quote!(#name),
     };
@@ -536,4 +536,17 @@ fn parse_attributes(attrs: &[syn::Attribute]) -> impl Iterator<Item = syn::Resul
                 Err(err) => Box::new([Err(err)].into_iter()),
             }
         })
+}
+
+// Binds a struct's named fields for writing or measuring, leaving out the skipped ones, which
+// neither reads, so they bind nothing that goes unused.
+fn named_fields_pattern(
+    name: &proc_macro2::TokenStream,
+    fields: &syn::Fields,
+) -> proc_macro2::TokenStream {
+    let bound = fields
+        .iter()
+        .filter(|field| !FieldAttributes::parse(&field.attrs).is_ok_and(|attrs| attrs.skip))
+        .map(|field| &field.ident);
+    quote::quote!(#name { #(#bound,)* .. })
 }

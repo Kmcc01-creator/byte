@@ -1,3 +1,6 @@
+// A skipped field is neither read nor written, so the derives must not bind it unused.
+#![deny(unused_variables, unused_assignments)]
+
 use byte::{
     ctx::{Delimiter, Len},
     Measure, TryRead, TryWrite, LE,
@@ -95,7 +98,7 @@ fn test_len_dependent() {
     );
 }
 
-#[derive(Debug, Clone, PartialEq, TryWrite, TryRead)]
+#[derive(Debug, Clone, PartialEq, TryWrite, TryRead, Measure)]
 struct Skipped {
     bool: bool,
     #[byte(skip_if = *bool)]
@@ -113,6 +116,7 @@ fn test_skipped() {
     };
     let buf = &mut [0; 5];
     data.try_write(buf, LE).unwrap();
+    assert_eq!(data.measure(LE), 1);
     assert_eq!(
         Ok((
             Skipped {
@@ -135,6 +139,7 @@ fn test_not_skipped() {
     };
     let buf = &mut [0; 5];
     data.try_write(buf, LE).unwrap();
+    assert_eq!(data.measure(LE), 5);
     assert_eq!(
         Ok((
             Skipped {
